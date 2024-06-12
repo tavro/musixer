@@ -9,14 +9,23 @@ let pausedTime = 0;
 let animationFrameId;
 let duration;
 
-document.getElementById('fileInput').addEventListener('change', handleFiles);
 document.getElementById('playButton').addEventListener('click', playAudio);
 document.getElementById('pauseButton').addEventListener('click', pauseAudio);
 document.getElementById('volumeSlider').addEventListener('input', changeVolume);
 document.getElementById('muteButton').addEventListener('click', toggleMute);
 
-function handleFiles(event) {
-    const files = event.target.files;
+const canvas = document.getElementById('waveform');
+canvas.addEventListener('dragover', handleDragOver);
+canvas.addEventListener('drop', handleDrop);
+
+function handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
     if (files.length > 0) {
         const file = files[0];
         const reader = new FileReader();
@@ -37,7 +46,6 @@ function handleFiles(event) {
 }
 
 function drawWaveform(buffer) {
-    const canvas = document.getElementById('waveform');
     const ctx = canvas.getContext('2d');
     const data = buffer.getChannelData(0);
     const step = Math.ceil(data.length / canvas.width);
@@ -84,7 +92,6 @@ function pauseAudio() {
 }
 
 function updateProgress() {
-    const canvas = document.getElementById('waveform');
     const ctx = canvas.getContext('2d');
     const currentTime = audioContext.currentTime - startTime;
     const progressWidth = (currentTime / duration) * canvas.width;
