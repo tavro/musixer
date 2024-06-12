@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>musixer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="controls">
+            <input type="file" id="fileInput" accept="audio/*" multiple>
+            <button id="playButton">▶️</button>
+            <button id="pauseButton">⏸️</button>
+            <button id="muteButton">🔇</button>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+        </div>
+        <canvas id="waveform" width="800" height="200"></canvas>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
