@@ -211,15 +211,36 @@ function handleLayerDrop(event) {
 
 function handleSoundClipDragStart(event) {
     event.dataTransfer.setData('text/plain', null);
+    event.target.classList.add('dragging');
 }
 
 function handleSoundClipDragEnd(event) {
-    const layer = event.target.parentElement;
-    const rect = layer.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = 0;
-    event.target.style.left = `${x}px`;
-    event.target.style.top = `${y}px`;
+    const layersContainer = document.getElementById('layersContainer');
+    const rect = layersContainer.getBoundingClientRect();
+    let x = event.clientX - rect.left;
+    let y = event.clientY - rect.top;
+
+    const soundClipWidth = event.target.offsetWidth;
+    const soundClipHeight = event.target.offsetHeight;
+
+    const newLayerIndex = Math.floor(y / soundClipHeight);
+
+    if (x < 0) {
+        x = 0;
+    } else if (x + soundClipWidth > layersContainer.offsetWidth) {
+        x = layersContainer.offsetWidth - soundClipWidth;
+    }
+
+    if (newLayerIndex >= 0 && newLayerIndex < currentLayerId) {
+        const targetLayer = document.getElementById(`layer-${newLayerIndex}`);
+        if (targetLayer) {
+            targetLayer.appendChild(event.target);
+            event.target.style.left = `${x}px`;
+            event.target.style.top = `0px`;
+        }
+    }
+
+    event.target.classList.remove('dragging');
 }
 
 function exportToMp3() {
