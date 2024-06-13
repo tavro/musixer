@@ -217,7 +217,7 @@ function handleSoundClipDragEnd(event) {
     const layer = event.target.parentElement;
     const rect = layer.getBoundingClientRect();
     const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const y = 0;
     event.target.style.left = `${x}px`;
     event.target.style.top = `${y}px`;
 }
