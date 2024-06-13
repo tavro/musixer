@@ -1,18 +1,25 @@
-let audioContext;
+let audioContext = new (window.AudioContext || window.webkitAudioContext)();
 let audioBuffer;
 let sourceNode;
-let gainNode;
+let gainNode = audioContext.createGain();
 let isPlaying = false;
 let isMuted = false;
 let startTime;
 let pausedTime = 0;
 let animationFrameId;
 let duration;
+let mediaRecorder;
+let recordedChunks = [];
+let currentLayerId = 0;
 
+document.getElementById('recordButton').addEventListener('click', toggleRecording);
 document.getElementById('playButton').addEventListener('click', playAudio);
 document.getElementById('pauseButton').addEventListener('click', pauseAudio);
 document.getElementById('volumeSlider').addEventListener('input', changeVolume);
 document.getElementById('muteButton').addEventListener('click', toggleMute);
+document.getElementById('addLayerButton').addEventListener('click', addLayer);
+document.getElementById('exportMp3Button').addEventListener('click', exportToMp3);
+document.getElementById('exportProjectButton').addEventListener('click', exportProject);
 
 const canvas = document.getElementById('waveform');
 canvas.addEventListener('dragover', handleDragOver);
@@ -32,11 +39,9 @@ function handleDrop(event) {
         
         reader.onload = function(ev) {
             const arrayBuffer = ev.target.result;
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            gainNode = audioContext.createGain();
             audioContext.decodeAudioData(arrayBuffer, function(buffer) {
                 audioBuffer = buffer;
-                drawWaveform(buffer);
+                drawWaveform(buffer, canvas);
                 duration = buffer.duration;
             });
         };
@@ -45,18 +50,18 @@ function handleDrop(event) {
     }
 }
 
-function drawWaveform(buffer) {
-    const ctx = canvas.getContext('2d');
+function drawWaveform(buffer, targetCanvas) {
+    const ctx = targetCanvas.getContext('2d');
     const data = buffer.getChannelData(0);
-    const step = Math.ceil(data.length / canvas.width);
-    const amp = canvas.height / 2;
+    const step = Math.ceil(data.length / targetCanvas.width);
+    const amp = targetCanvas.height / 2;
 
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
     ctx.strokeStyle = 'black';
     ctx.beginPath();
     ctx.moveTo(0, amp);
-    for (let i = 0; i < canvas.width; i++) {
+    for (let i = 0; i < targetCanvas.width; i++) {
         let min = 1.0;
         let max = -1.0;
         for (let j = 0; j < step; j++) {
@@ -96,7 +101,7 @@ function updateProgress() {
     const currentTime = audioContext.currentTime - startTime;
     const progressWidth = (currentTime / duration) * canvas.width;
 
-    drawWaveform(audioBuffer);
+    drawWaveform(audioBuffer, canvas);
 
     ctx.strokeStyle = 'red';
     ctx.beginPath();
@@ -121,4 +126,106 @@ function toggleMute() {
     isMuted = !isMuted;
     gainNode.gain.value = isMuted ? 0 : document.getElementById('volumeSlider').value;
     document.getElementById('muteButton').textContent = isMuted ? '🔊' : '🔇';
+}
+
+function toggleRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        document.getElementById('recordButton').textContent = '🔴';
+    } else {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                mediaRecorder.onstop = saveRecording;
+                mediaRecorder.start();
+                document.getElementById('recordButton').textContent = '⏹️';
+            });
+    }
+}
+
+function saveRecording() {
+    const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'recording.wav';
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    recordedChunks = [];
+}
+
+function addLayer() {
+    const layer = document.createElement('div');
+    layer.classList.add('layer');
+    layer.id = `layer-${currentLayerId++}`;
+    document.getElementById('layersContainer').appendChild(layer);
+
+    layer.addEventListener('dragover', handleLayerDragOver);
+    layer.addEventListener('drop', handleLayerDrop);
+}
+
+function handleLayerDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+}
+
+function handleLayerDrop(event) {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(ev) {
+            const arrayBuffer = ev.target.result;
+            audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+                const soundClip = document.createElement('div');
+                soundClip.classList.add('sound-clip');
+                soundClip.draggable = true;
+                soundClip.dataset.buffer = buffer;
+                
+                const soundClipCanvas = document.createElement('canvas');
+                soundClipCanvas.width = 200;
+                soundClipCanvas.height = 100;
+                soundClip.appendChild(soundClipCanvas);
+
+                drawWaveform(buffer, soundClipCanvas);
+
+                event.target.appendChild(soundClip);
+
+                soundClip.addEventListener('dragstart', handleSoundClipDragStart);
+                soundClip.addEventListener('dragend', handleSoundClipDragEnd);
+            });
+        };
+        
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function handleSoundClipDragStart(event) {
+    event.dataTransfer.setData('text/plain', null);
+}
+
+function handleSoundClipDragEnd(event) {
+    const layer = event.target.parentElement;
+    const rect = layer.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    event.target.style.left = `${x}px`;
+    event.target.style.top = `${y}px`;
+}
+
+function exportToMp3() {
+    // TODO: export project to mp3
+}
+
+function exportProject() {
+    // TODO: export project file
 }

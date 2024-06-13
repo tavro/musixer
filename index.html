@@ -10,6 +10,7 @@
     <div id="app">
         <div id="controls">
             <div id="button-container">
+                <button id="recordButton">🔴</button>
                 <button id="playButton">▶️</button>
                 <button id="pauseButton">⏸️</button>
                 <button id="muteButton">🔇</button>
@@ -17,7 +18,13 @@
             <div class="slider-container">
                 <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
             </div>
+            <div id="layerControls">
+                <button id="addLayerButton">➕ Layer</button>
+                <button id="exportMp3Button">Export MP3</button>
+                <button id="exportProjectButton">Export Project</button>
+            </div>
         </div>
+        <div id="layersContainer"></div>
         <canvas id="waveform" width="800" height="195"></canvas>
     </div>
     <script src="script.js"></script>
