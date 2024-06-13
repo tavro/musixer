@@ -1,16 +1,16 @@
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let audioBuffer;
-let sourceNode;
+let audioBuffers = [];
 let gainNode = audioContext.createGain();
 let isPlaying = false;
 let isMuted = false;
 let startTime;
 let pausedTime = 0;
 let animationFrameId;
-let duration;
+let duration = 0;
 let mediaRecorder;
 let recordedChunks = [];
 let currentLayerId = 0;
+let progressBar;
 
 document.getElementById('recordButton').addEventListener('click', toggleRecording);
 document.getElementById('playButton').addEventListener('click', playAudio);
@@ -21,99 +21,60 @@ document.getElementById('addLayerButton').addEventListener('click', addLayer);
 document.getElementById('exportMp3Button').addEventListener('click', exportToMp3);
 document.getElementById('exportProjectButton').addEventListener('click', exportProject);
 
-const canvas = document.getElementById('waveform');
-canvas.addEventListener('dragover', handleDragOver);
-canvas.addEventListener('drop', handleDrop);
-
-function handleDragOver(event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-}
-
-function handleDrop(event) {
-    event.preventDefault();
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
-        const file = files[0];
-        const reader = new FileReader();
-        
-        reader.onload = function(ev) {
-            const arrayBuffer = ev.target.result;
-            audioContext.decodeAudioData(arrayBuffer, function(buffer) {
-                audioBuffer = buffer;
-                drawWaveform(buffer, canvas);
-                duration = buffer.duration;
-            });
-        };
-        
-        reader.readAsArrayBuffer(file);
-    }
-}
-
-function drawWaveform(buffer, targetCanvas) {
-    const ctx = targetCanvas.getContext('2d');
-    const data = buffer.getChannelData(0);
-    const step = Math.ceil(data.length / targetCanvas.width);
-    const amp = targetCanvas.height / 2;
-
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
-    ctx.strokeStyle = 'black';
-    ctx.beginPath();
-    ctx.moveTo(0, amp);
-    for (let i = 0; i < targetCanvas.width; i++) {
-        let min = 1.0;
-        let max = -1.0;
-        for (let j = 0; j < step; j++) {
-            const datum = data[(i * step) + j]; 
-            if (datum < min) min = datum;
-            if (datum > max) max = datum;
-        }
-        ctx.lineTo(i, (1 + min) * amp);
-        ctx.lineTo(i, (1 + max) * amp);
-    }
-    ctx.stroke();
-}
-
 function playAudio() {
-    if (audioBuffer && !isPlaying) {
-        sourceNode = audioContext.createBufferSource();
-        sourceNode.buffer = audioBuffer;
-        sourceNode.connect(gainNode).connect(audioContext.destination);
-        sourceNode.start(0, pausedTime);
+    if (!isPlaying) {
         startTime = audioContext.currentTime - pausedTime;
         isPlaying = true;
         updateProgress();
+        playClips();
     }
 }
 
 function pauseAudio() {
     if (isPlaying) {
-        sourceNode.stop();
-        pausedTime = audioContext.currentTime - startTime;
         isPlaying = false;
+        pausedTime = audioContext.currentTime - startTime;
         cancelAnimationFrame(animationFrameId);
+        stopClips();
     }
 }
 
+function playClips() {
+    const clips = document.querySelectorAll('.sound-clip');
+    clips.forEach(clip => {
+        const bufferIndex = clip.dataset.buffer;
+        const buffer = audioBuffers[bufferIndex];
+        const offset = parseFloat(clip.style.left) / document.getElementById('layersContainer').offsetWidth * duration;
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(gainNode).connect(audioContext.destination);
+        source.start(0, Math.max(0, pausedTime - offset));
+        clip.dataset.source = source;
+    });
+}
+
+function stopClips() {
+    const clips = document.querySelectorAll('.sound-clip');
+    clips.forEach(clip => {
+        const source = clip.dataset.source;
+        if (source) {
+            source.stop();
+        }
+    });
+}
+
 function updateProgress() {
-    const ctx = canvas.getContext('2d');
     const currentTime = audioContext.currentTime - startTime;
-    const progressWidth = (currentTime / duration) * canvas.width;
+    const progressWidth = (currentTime / duration) * 100;
 
-    drawWaveform(audioBuffer, canvas);
-
-    ctx.strokeStyle = 'red';
-    ctx.beginPath();
-    ctx.moveTo(progressWidth, 0);
-    ctx.lineTo(progressWidth, canvas.height);
-    ctx.stroke();
+    progressBar.style.width = `${progressWidth}%`;
 
     if (currentTime < duration) {
         animationFrameId = requestAnimationFrame(updateProgress);
     } else {
         isPlaying = false;
         pausedTime = 0;
+        progressBar.style.width = '0%';
     }
 }
 
@@ -167,6 +128,10 @@ function addLayer() {
     layer.id = `layer-${currentLayerId++}`;
     document.getElementById('layersContainer').appendChild(layer);
 
+    const progressBar = document.createElement('div');
+    progressBar.classList.add('progress-bar');
+    layer.appendChild(progressBar);
+
     layer.addEventListener('dragover', handleLayerDragOver);
     layer.addEventListener('drop', handleLayerDrop);
 }
@@ -186,19 +151,28 @@ function handleLayerDrop(event) {
         reader.onload = function(ev) {
             const arrayBuffer = ev.target.result;
             audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+                const bufferIndex = audioBuffers.length;
+                audioBuffers.push(buffer);
+
                 const soundClip = document.createElement('div');
                 soundClip.classList.add('sound-clip');
                 soundClip.draggable = true;
-                soundClip.dataset.buffer = buffer;
-                
+                soundClip.dataset.buffer = bufferIndex;
+
+                soundClip.style.width = `${buffer.duration * 200}px`;
+                soundClip.style.height = '100%';
+                soundClip.style.left = `${event.offsetX}px`;
+
                 const soundClipCanvas = document.createElement('canvas');
-                soundClipCanvas.width = 200;
+                soundClipCanvas.width = parseFloat(soundClip.style.width);
                 soundClipCanvas.height = 100;
                 soundClip.appendChild(soundClipCanvas);
 
                 drawWaveform(buffer, soundClipCanvas);
 
                 event.target.appendChild(soundClip);
+
+                duration = Math.max(duration, buffer.duration);
 
                 soundClip.addEventListener('dragstart', handleSoundClipDragStart);
                 soundClip.addEventListener('dragend', handleSoundClipDragEnd);
@@ -243,6 +217,31 @@ function handleSoundClipDragEnd(event) {
     event.target.classList.remove('dragging');
 }
 
+function drawWaveform(buffer, canvas) {
+    const ctx = canvas.getContext('2d');
+    const data = buffer.getChannelData(0);
+    const step = Math.ceil(data.length / canvas.width);
+    const amp = canvas.height / 2;
+
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = 'black';
+    ctx.beginPath();
+    ctx.moveTo(0, amp);
+    for (let i = 0; i < canvas.width; i++) {
+        let min = 1.0;
+        let max = -1.0;
+        for (let j = 0; j < step; j++) {
+            const datum = data[(i * step) + j];
+            if (datum < min) min = datum;
+            if (datum > max) max = datum;
+        }
+        ctx.lineTo(i, (1 + min) * amp);
+        ctx.lineTo(i, (1 + max) * amp);
+    }
+    ctx.stroke();
+}
+
 function exportToMp3() {
     // TODO: export project to mp3
 }
@@ -250,3 +249,7 @@ function exportToMp3() {
 function exportProject() {
     // TODO: export project file
 }
+
+progressBar = document.createElement('div');
+progressBar.classList.add('progress-bar');
+document.getElementById('layersContainer').appendChild(progressBar);

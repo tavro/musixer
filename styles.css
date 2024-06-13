@@ -53,11 +53,6 @@ button {
     height: 8px;
 }
 
-#waveform {
-    border: 1px solid #000;
-    margin: 20px 0;
-}
-
 #layersContainer {
     display: flex;
     flex-direction: column;
@@ -65,6 +60,7 @@ button {
     width: 800px;
     border: 1px solid #000;
     margin-top: 20px;
+    position: relative;
 }
 
 .layer {
@@ -81,4 +77,14 @@ button {
     height: 100%;
     background-color: darkgray;
     cursor: grab;
+}
+
+.progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.5);
+    z-index: 1;
 }
