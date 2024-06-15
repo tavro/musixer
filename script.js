@@ -1,6 +1,6 @@
-let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let audioBuffers = [];
-let gainNode = audioContext.createGain();
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const audioBuffers = [];
+const gainNode = audioContext.createGain();
 let isPlaying = false;
 let isMuted = false;
 let startTime;
@@ -8,7 +8,7 @@ let pausedTime = 0;
 let animationFrameId;
 let duration = 0;
 let mediaRecorder;
-let recordedChunks = [];
+const recordedChunks = [];
 let currentLayerId = 0;
 let progressBar;
 
@@ -119,7 +119,7 @@ function saveRecording() {
     document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(url);
-    recordedChunks = [];
+    recordedChunks.length = 0;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -244,9 +244,9 @@ function drawWaveform(buffer, canvas) {
     const step = Math.ceil(data.length / canvas.width);
     const amp = canvas.height / 2;
 
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = '#f4f4f4';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = 'black';
+    ctx.strokeStyle = '#333';
     ctx.beginPath();
     ctx.moveTo(0, amp);
     for (let i = 0; i < canvas.width; i++) {
