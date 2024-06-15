@@ -122,11 +122,23 @@ function saveRecording() {
     recordedChunks = [];
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const layersContainer = document.getElementById('layersContainer');
+    layersContainer.style.overflowX = 'auto';
+    layersContainer.style.overflowY = 'auto';
+    layersContainer.style.whiteSpace = 'nowrap';
+    layersContainer.style.maxHeight = 'calc(100px * 5 + 10px * 6)';
+    addLayer();
+});
+
 function addLayer() {
+    const layersContainer = document.getElementById('layersContainer');
+    const existingLayers = layersContainer.getElementsByClassName('layer').length;
+
     const layer = document.createElement('div');
     layer.classList.add('layer');
     layer.id = `layer-${currentLayerId++}`;
-    document.getElementById('layersContainer').appendChild(layer);
+    layersContainer.appendChild(layer);
 
     const progressBar = document.createElement('div');
     progressBar.classList.add('progress-bar');
@@ -134,6 +146,11 @@ function addLayer() {
 
     layer.addEventListener('dragover', handleLayerDragOver);
     layer.addEventListener('drop', handleLayerDrop);
+
+    if (existingLayers >= 5) {
+        layersContainer.style.overflowY = 'auto';
+        layersContainer.style.maxHeight = 'calc(100px * 5 + 10px * 6)';
+    }
 }
 
 function handleLayerDragOver(event) {
@@ -160,7 +177,6 @@ function handleLayerDrop(event) {
                 soundClip.dataset.buffer = bufferIndex;
 
                 soundClip.style.width = `${buffer.duration * 200}px`;
-                soundClip.style.height = '100%';
                 soundClip.style.left = `${event.offsetX}px`;
 
                 const soundClipCanvas = document.createElement('canvas');
@@ -176,6 +192,11 @@ function handleLayerDrop(event) {
 
                 soundClip.addEventListener('dragstart', handleSoundClipDragStart);
                 soundClip.addEventListener('dragend', handleSoundClipDragEnd);
+                
+                const layersContainer = document.getElementById('layersContainer');
+                if (soundClip.offsetLeft + soundClip.offsetWidth > layersContainer.scrollWidth) {
+                    layersContainer.style.width = `${soundClip.offsetLeft + soundClip.offsetWidth}px`;
+                }
             });
         };
         

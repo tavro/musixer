@@ -61,6 +61,10 @@ button {
     border: 1px solid #000;
     margin-top: 20px;
     position: relative;
+    overflow-x: auto;
+    overflow-y: auto;
+    white-space: nowrap;
+    max-height: calc(100px * 5 + 10px * 6);
 }
 
 .layer {
@@ -70,13 +74,22 @@ button {
     margin: 5px 0;
     position: relative;
     background-color: lightgray;
+    display: inline-block;
 }
 
 .sound-clip {
     position: absolute;
     height: 100%;
+    width: auto;
     background-color: darkgray;
     cursor: grab;
+    display: flex;
+    align-items: center;
+}
+
+.sound-clip canvas {
+    height: 100%;
+    width: 100%;
 }
 
 .progress-bar {
