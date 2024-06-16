@@ -223,6 +223,9 @@ function handleSoundClipDragStart(event) {
     if (!event.target.classList.contains('handle')) {
         event.dataTransfer.setData('text/plain', null);
         event.target.classList.add('dragging');
+
+        event.target.dataset.originalLeft = parseFloat(event.target.style.left);
+        event.target.dataset.originalTop = parseFloat(event.target.style.top);
     }
 }
 
@@ -246,9 +249,32 @@ function handleSoundClipDragEnd(event) {
     if (newLayerIndex >= 0 && newLayerIndex < currentLayerId) {
         const targetLayer = document.getElementById(`layer-${newLayerIndex}`);
         if (targetLayer) {
-            targetLayer.appendChild(event.target);
-            event.target.style.left = `${x}px`;
-            event.target.style.top = `0px`;
+            const existingClips = targetLayer.getElementsByClassName('sound-clip');
+            let overlap = false;
+            for (let clip of existingClips) {
+                const clipLeft = parseFloat(clip.style.left);
+                const clipRight = clipLeft + clip.offsetWidth;
+                const newClipLeft = x;
+                const newClipRight = x + soundClipWidth;
+
+                if (
+                    (newClipLeft >= clipLeft && newClipLeft < clipRight) ||
+                    (newClipRight > clipLeft && newClipRight <= clipRight) ||
+                    (newClipLeft <= clipLeft && newClipRight >= clipRight)
+                ) {
+                    overlap = true;
+                    break;
+                }
+            }
+
+            if (!overlap) {
+                targetLayer.appendChild(event.target);
+                event.target.style.left = `${x}px`;
+                event.target.style.top = `0px`;
+            } else {
+                event.target.style.left = `${event.target.dataset.originalLeft}px`;
+                event.target.style.top = `${event.target.dataset.originalTop}px`;
+            }
         }
     }
 
