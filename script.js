@@ -147,6 +147,21 @@ function addLayer() {
     progressBar.classList.add('progress-bar');
     layer.appendChild(progressBar);
 
+    const layerControls = document.createElement('div');
+    layerControls.classList.add('layer-controls');
+
+    const removeLayerButton = document.createElement('button');
+    removeLayerButton.textContent = '🗑️';
+    removeLayerButton.addEventListener('click', () => removeLayer(layer));
+    layerControls.appendChild(removeLayerButton);
+
+    const muteLayerButton = document.createElement('button');
+    muteLayerButton.textContent = '🔇';
+    muteLayerButton.addEventListener('click', () => toggleLayerMute(layer, muteLayerButton));
+    layerControls.appendChild(muteLayerButton);
+
+    layer.appendChild(layerControls);
+
     layer.addEventListener('dragover', handleLayerDragOver);
     layer.addEventListener('drop', handleLayerDrop);
 
@@ -154,6 +169,23 @@ function addLayer() {
         layersContainer.style.overflowY = 'auto';
         layersContainer.style.maxHeight = 'calc(100px * 5 + 10px * 6)';
     }
+}
+
+function toggleLayerMute(layer, button) {
+    const clips = layer.querySelectorAll('.sound-clip');
+    const isMuted = button.textContent === '🔇';
+    clips.forEach(clip => {
+        const source = clip.dataset.source;
+        if (source) {
+            source.gainNode.gain.value = isMuted ? 0 : 1;
+        }
+    });
+    button.textContent = isMuted ? '🔊' : '🔇';
+}
+
+function removeLayer(layer) {
+    layer.remove();
+    currentLayerId--;
 }
 
 function handleLayerDragOver(event) {
@@ -207,6 +239,8 @@ function handleLayerDrop(event) {
 
                 leftHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'left'));
                 rightHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'right'));
+
+                addTooltip(soundClip, 'Click to select, drag to move, use handles to trim');
 
                 const layersContainer = document.getElementById('layersContainer');
                 if (soundClip.offsetLeft + soundClip.offsetWidth > layersContainer.scrollWidth) {
@@ -343,8 +377,13 @@ function handleSoundClipClick(event) {
     newClip.addEventListener('dragend', handleSoundClipDragEnd);
     newClip.addEventListener('click', handleSoundClipClick);
 
+    const leftHandle = newClip.querySelector('.left-handle');
+    const rightHandle = newClip.querySelector('.right-handle');
+
     leftHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'left'));
     rightHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'right'));
+
+    addTooltip(newClip, 'Click to select, drag to move, use handles to trim');
 
     duration = Math.max(duration, leftBuffer.duration + rightBuffer.duration);
 }
@@ -407,3 +446,18 @@ function exportProject() {
 progressBar = document.createElement('div');
 progressBar.classList.add('progress-bar');
 document.getElementById('layersContainer').appendChild(progressBar);
+
+function addTooltip(element, text) {
+    const tooltip = document.createElement('div');
+    tooltip.classList.add('tooltip');
+    tooltip.textContent = text;
+    element.appendChild(tooltip);
+
+    element.addEventListener('mouseenter', () => {
+        tooltip.classList.add('show');
+    });
+
+    element.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('show');
+    });
+}

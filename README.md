@@ -10,6 +10,7 @@ some kind of music making/mixing software
 - [ ] Make it possible to remove sound clips
 - [ ] Select sound clip
 - [ ] Tool tips
+- [ ] Make it possible to remove layers
 
 # Bugs
 

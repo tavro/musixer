@@ -117,6 +117,14 @@ button:hover {
     position: relative;
 }
 
+.layer-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: flex;
+    gap: 5px;
+}
+
 .sound-clip {
     position: absolute;
     height: 100%;
@@ -165,4 +173,19 @@ button:hover {
     background-color: rgba(0, 123, 255, 0.5);
     z-index: 1;
     border-radius: 8px;
+}
+
+.tooltip {
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip.show {
+    opacity: 1;
 }
