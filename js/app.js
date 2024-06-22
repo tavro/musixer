@@ -38,29 +38,98 @@ class SoundClip {
         rightHandle.setAttribute('data-tooltip', 'End Trim');
         waveformContainer.appendChild(rightHandle);
 
+        const controlsContainer = document.createElement('div');
+        controlsContainer.className = 'controls-container';
+
         const playButton = document.createElement('button');
         playButton.textContent = 'Play';
         playButton.onclick = () => this.playAudio();
-        this.element.appendChild(playButton);
+        controlsContainer.appendChild(playButton);
 
         const loopCheckbox = document.createElement('input');
         loopCheckbox.type = 'checkbox';
         loopCheckbox.id = 'loop-checkbox';
         loopCheckbox.onchange = () => this.toggleLoop();
-        this.element.appendChild(loopCheckbox);
+        controlsContainer.appendChild(loopCheckbox);
 
         const loopLabel = document.createElement('label');
         loopLabel.htmlFor = 'loop-checkbox';
         loopLabel.textContent = 'Loop';
-        this.element.appendChild(loopLabel);
+        controlsContainer.appendChild(loopLabel);
 
         const stopButton = document.createElement('button');
         stopButton.textContent = 'Stop';
         stopButton.onclick = () => this.stopAudio();
-        this.element.appendChild(stopButton);
+        controlsContainer.appendChild(stopButton);
 
+        this.element.appendChild(controlsContainer);
+
+        this.addKnobs(controlsContainer);
         this.initDragHandles(leftHandle, rightHandle, waveformContainer);
         document.getElementById('sound-clips').appendChild(this.element);
+    }
+
+    addKnobs(controlsContainer) {
+        const knobs = [
+            { label: 'Wavelength', min: 1, max: 1000, value: 500, attribute: 'wavelength' },
+            { label: 'Amplitude', min: 0, max: 1, value: 0.5, step: 0.01, attribute: 'amplitude' },
+            { label: 'Frequency', min: 20, max: 20000, value: 440, attribute: 'frequency' },
+            { label: 'Time Period', min: 0.01, max: 5, value: 1, step: 0.01, attribute: 'timePeriod' },
+            { label: 'Velocity', min: 0, max: 343, value: 343, attribute: 'velocity' }
+        ];
+
+        knobs.forEach(knob => {
+            const knobContainer = document.createElement('div');
+            knobContainer.className = 'knob-container';
+
+            const knobElement = document.createElement('div');
+            knobElement.className = 'knob';
+            knobElement.setAttribute('data-attribute', knob.attribute);
+            knobElement.setAttribute('data-value', knob.value);
+            knobElement.style.transform = `rotate(${(knob.value - knob.min) / (knob.max - knob.min) * 270 - 135}deg)`;
+            knobElement.onmousedown = (e) => this.startKnobRotation(e, knobElement, knob);
+            knobContainer.appendChild(knobElement);
+
+            const knobLabel = document.createElement('div');
+            knobLabel.className = 'knob-label';
+            knobLabel.textContent = knob.label;
+            knobContainer.appendChild(knobLabel);
+
+            controlsContainer.appendChild(knobContainer);
+        });
+    }
+
+    startKnobRotation(e, knobElement, knob) {
+        e.preventDefault();
+        const rect = knobElement.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const minRotation = -135;
+        const maxRotation = 135;
+
+        const onMouseMove = (e) => {
+            const deltaX = e.clientX - centerX;
+            const deltaY = e.clientY - centerY;
+            const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
+            const rotation = Math.min(maxRotation, Math.max(minRotation, angle));
+            const value = knob.min + (rotation - minRotation) / (maxRotation - minRotation) * (knob.max - knob.min);
+            knobElement.style.transform = `rotate(${rotation}deg)`;
+            knobElement.setAttribute('data-value', value.toFixed(2));
+            this.updateAttribute(knob.attribute, value);
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }
+
+    updateAttribute(attribute, value) {
+        console.log(`Updated ${attribute} to ${value}`);
+        // TODO: Handle the logic to update the attribute of the sound clip.
     }
 
     async loadAudio(file) {
@@ -85,8 +154,8 @@ class SoundClip {
         this.waveformCtx.beginPath();
 
         for (let i = 0; i < width; i++) {
-            const min = 1.0 - Math.max(...data.subarray(i * step, (i + 1) * step));
-            const max = 1.0 - Math.min(...data.subarray(i * step, (i + 1) * step));
+            const min = Math.min(...data.subarray(i * step, (i + 1) * step));
+            const max = Math.max(...data.subarray(i * step, (i + 1) * step));
             this.waveformCtx.moveTo(i, (1 + min) * amp);
             this.waveformCtx.lineTo(i, (1 + max) * amp);
         }
