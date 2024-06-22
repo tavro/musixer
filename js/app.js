@@ -6,6 +6,8 @@ class SoundClip {
         this.startTime = 0;
         this.endTime = null;
         this.isPlaying = false;
+        this.isLooping = false;
+        this.source = null;
         this.loadAudio(file);
 
         this.element = document.createElement('div');
@@ -40,6 +42,22 @@ class SoundClip {
         playButton.textContent = 'Play';
         playButton.onclick = () => this.playAudio();
         this.element.appendChild(playButton);
+
+        const loopCheckbox = document.createElement('input');
+        loopCheckbox.type = 'checkbox';
+        loopCheckbox.id = 'loop-checkbox';
+        loopCheckbox.onchange = () => this.toggleLoop();
+        this.element.appendChild(loopCheckbox);
+
+        const loopLabel = document.createElement('label');
+        loopLabel.htmlFor = 'loop-checkbox';
+        loopLabel.textContent = 'Loop';
+        this.element.appendChild(loopLabel);
+
+        const stopButton = document.createElement('button');
+        stopButton.textContent = 'Stop';
+        stopButton.onclick = () => this.stopAudio();
+        this.element.appendChild(stopButton);
 
         this.initDragHandles(leftHandle, rightHandle, waveformContainer);
         document.getElementById('sound-clips').appendChild(this.element);
@@ -81,26 +99,49 @@ class SoundClip {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
-        const source = this.audioCtx.createBufferSource();
-        source.buffer = this.audioBuffer;
-        source.connect(this.audioCtx.destination);
-        source.start(0, this.startTime, this.endTime - this.startTime);
+        this.source = this.audioCtx.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+        this.source.connect(this.audioCtx.destination);
+        this.source.loop = this.isLooping;
+        this.source.loopStart = this.startTime;
+        this.source.loopEnd = this.endTime;
+        this.source.start(0, this.startTime, this.isLooping ? undefined : this.endTime - this.startTime);
 
         const duration = this.endTime - this.startTime;
         const updateProgress = () => {
+            if (!this.isPlaying) return;
+
             const elapsed = this.audioCtx.currentTime - startTime;
-            const progress = Math.min(1, elapsed / duration);
+            const progress = this.isLooping ? (elapsed % duration) / duration : Math.min(1, elapsed / duration);
             this.progressBar.style.left = `${(this.startTime / this.audioBuffer.duration) * 100}%`;
             this.progressBar.style.width = `${progress * (this.endTime - this.startTime) / this.audioBuffer.duration * 100}%`;
-            if (progress < 1) {
+
+            if (progress < 1 || this.isLooping) {
                 requestAnimationFrame(updateProgress);
             } else {
                 this.isPlaying = false;
+                this.progressBar.style.width = '0';
             }
         };
 
         const startTime = this.audioCtx.currentTime;
         updateProgress();
+    }
+
+    stopAudio() {
+        if (this.isPlaying && this.source) {
+            this.source.stop();
+            this.isPlaying = false;
+            this.progressBar.style.width = '0';
+        }
+    }
+
+    toggleLoop() {
+        this.isLooping = !this.isLooping;
+        if (this.isPlaying) {
+            this.stopAudio();
+            this.playAudio();
+        }
     }
 
     initDragHandles(leftHandle, rightHandle, waveformContainer) {
