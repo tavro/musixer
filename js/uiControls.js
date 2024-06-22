@@ -1,6 +1,6 @@
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const audioBuffers = [];
-const gainNode = audioContext.createGain();
+import { audioContext, gainNode } from './audioContext.js';
+import { SoundClip } from './soundClip.js';
+
 let isPlaying = false;
 let isMuted = false;
 let startTime;
@@ -14,6 +14,7 @@ let progressBar;
 let trimming = false;
 let trimmingClip = null;
 let trimSide = '';
+const soundClips = [];
 
 document.getElementById('recordButton').addEventListener('click', toggleRecording);
 document.getElementById('playButton').addEventListener('click', playAudio);
@@ -29,7 +30,7 @@ function playAudio() {
         startTime = audioContext.currentTime - pausedTime;
         isPlaying = true;
         updateProgress();
-        playClips();
+        soundClips.forEach(clip => clip.play(audioContext, gainNode, startTime, pausedTime));
     }
 }
 
@@ -38,32 +39,8 @@ function pauseAudio() {
         isPlaying = false;
         pausedTime = audioContext.currentTime - startTime;
         cancelAnimationFrame(animationFrameId);
-        stopClips();
+        soundClips.forEach(clip => clip.stop());
     }
-}
-
-function playClips() {
-    const clips = document.querySelectorAll('.sound-clip');
-    clips.forEach(clip => {
-        const bufferIndex = clip.dataset.buffer;
-        const buffer = audioBuffers[bufferIndex];
-        const offset = parseFloat(clip.style.left) / document.getElementById('layersContainer').offsetWidth * duration;
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(gainNode).connect(audioContext.destination);
-        source.start(0, Math.max(0, pausedTime - offset));
-        clip.dataset.source = source;
-    });
-}
-
-function stopClips() {
-    const clips = document.querySelectorAll('.sound-clip');
-    clips.forEach(clip => {
-        const source = clip.dataset.source;
-        if (source) {
-            source.stop();
-        }
-    });
 }
 
 function updateProgress() {
@@ -124,15 +101,6 @@ function saveRecording() {
     URL.revokeObjectURL(url);
     recordedChunks.length = 0;
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    const layersContainer = document.getElementById('layersContainer');
-    layersContainer.style.overflowX = 'auto';
-    layersContainer.style.overflowY = 'auto';
-    layersContainer.style.whiteSpace = 'nowrap';
-    layersContainer.style.maxHeight = 'calc(100px * 5 + 10px * 6)';
-    addLayer();
-});
 
 function addLayer() {
     const layersContainer = document.getElementById('layersContainer');
@@ -203,48 +171,43 @@ function handleLayerDrop(event) {
         reader.onload = function(ev) {
             const arrayBuffer = ev.target.result;
             audioContext.decodeAudioData(arrayBuffer, function(buffer) {
-                const bufferIndex = audioBuffers.length;
-                audioBuffers.push(buffer);
+                const newClip = new SoundClip(buffer);
+                soundClips.push(newClip);
 
-                const soundClip = document.createElement('div');
-                soundClip.classList.add('sound-clip');
-                soundClip.draggable = true;
-                soundClip.dataset.buffer = bufferIndex;
+                const soundClipDiv = document.createElement('div');
+                soundClipDiv.classList.add('sound-clip');
+                soundClipDiv.draggable = true;
+                soundClipDiv.dataset.index = soundClips.length - 1;
 
-                soundClip.style.width = `${buffer.duration * 200}px`;
-                soundClip.style.left = `${event.offsetX}px`;
+                soundClipDiv.style.width = `${buffer.duration * 200}px`;
+                soundClipDiv.style.left = `${event.offsetX}px`;
 
-                const soundClipCanvas = document.createElement('canvas');
-                soundClipCanvas.width = parseFloat(soundClip.style.width);
-                soundClipCanvas.height = 100;
-                soundClip.appendChild(soundClipCanvas);
-
-                drawWaveform(buffer, soundClipCanvas);
+                soundClipDiv.appendChild(newClip.canvas);
 
                 const leftHandle = document.createElement('div');
                 leftHandle.classList.add('handle', 'left-handle');
-                soundClip.appendChild(leftHandle);
+                soundClipDiv.appendChild(leftHandle);
 
                 const rightHandle = document.createElement('div');
                 rightHandle.classList.add('handle', 'right-handle');
-                soundClip.appendChild(rightHandle);
+                soundClipDiv.appendChild(rightHandle);
 
-                event.target.appendChild(soundClip);
+                event.target.appendChild(soundClipDiv);
 
                 duration = Math.max(duration, buffer.duration);
 
-                soundClip.addEventListener('dragstart', handleSoundClipDragStart);
-                soundClip.addEventListener('dragend', handleSoundClipDragEnd);
-                soundClip.addEventListener('click', handleSoundClipClick);
+                soundClipDiv.addEventListener('dragstart', handleSoundClipDragStart);
+                soundClipDiv.addEventListener('dragend', handleSoundClipDragEnd);
+                soundClipDiv.addEventListener('click', handleSoundClipClick);
 
                 leftHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'left'));
                 rightHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'right'));
 
-                addTooltip(soundClip, 'Click to select, drag to move, use handles to trim');
+                addTooltip(soundClipDiv, 'Click to select, drag to move, use handles to trim');
 
                 const layersContainer = document.getElementById('layersContainer');
-                if (soundClip.offsetLeft + soundClip.offsetWidth > layersContainer.scrollWidth) {
-                    layersContainer.style.width = `${soundClip.offsetLeft + soundClip.offsetWidth}px`;
+                if (soundClipDiv.offsetLeft + soundClipDiv.offsetWidth > layersContainer.scrollWidth) {
+                    layersContainer.style.width = `${soundClipDiv.offsetLeft + soundClipDiv.offsetWidth}px`;
                 }
             });
         };
@@ -315,77 +278,46 @@ function handleSoundClipDragEnd(event) {
     event.target.classList.remove('dragging');
 }
 
-function drawWaveform(buffer, canvas) {
-    const ctx = canvas.getContext('2d');
-    const data = buffer.getChannelData(0);
-    const step = Math.ceil(data.length / canvas.width);
-    const amp = canvas.height / 2;
-
-    ctx.fillStyle = '#f4f4f4';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#333';
-    ctx.beginPath();
-    ctx.moveTo(0, amp);
-    for (let i = 0; i < canvas.width; i++) {
-        let min = 1.0;
-        let max = -1.0;
-        for (let j = 0; j < step; j++) {
-            const datum = data[(i * step) + j];
-            if (datum < min) min = datum;
-            if (datum > max) max = datum;
-        }
-        ctx.lineTo(i, (1 + min) * amp);
-        ctx.lineTo(i, (1 + max) * amp);
-    }
-    ctx.stroke();
-}
-
 function handleSoundClipClick(event) {
     const clip = event.target;
     const rect = clip.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
 
-    const bufferIndex = clip.dataset.buffer;
-    const buffer = audioBuffers[bufferIndex];
+    const clipIndex = clip.dataset.index;
+    const soundClip = soundClips[clipIndex];
     const originalWidth = parseFloat(clip.style.width);
-    const splitTime = (clickX / originalWidth) * buffer.duration;
+    const splitTime = (clickX / originalWidth) * soundClip.length;
 
-    const leftBuffer = audioContext.createBuffer(1, splitTime * audioContext.sampleRate, audioContext.sampleRate);
-    leftBuffer.copyToChannel(buffer.getChannelData(0).slice(0, splitTime * audioContext.sampleRate), 0);
+    soundClip.trim(0, splitTime);
+    const newClip = new SoundClip(soundClip.buffer, splitTime, soundClip.length - splitTime, true);
+    soundClips.push(newClip);
 
-    const rightBuffer = audioContext.createBuffer(1, (buffer.duration - splitTime) * audioContext.sampleRate, audioContext.sampleRate);
-    rightBuffer.copyToChannel(buffer.getChannelData(0).slice(splitTime * audioContext.sampleRate), 0);
+    const newClipDiv = clip.cloneNode(true);
+    newClipDiv.dataset.index = soundClips.length - 1;
+    newClipDiv.style.width = `${newClip.length * 200}px`;
+    newClipDiv.style.left = `${parseFloat(clip.style.left) + originalWidth - parseFloat(newClipDiv.style.width)}px`;
 
-    audioBuffers[bufferIndex] = leftBuffer;
-    audioBuffers.push(rightBuffer);
+    newClipDiv.appendChild(newClip.canvas);
 
-    const newClip = clip.cloneNode(true);
-    newClip.dataset.buffer = audioBuffers.length - 1;
-    newClip.style.width = `${rightBuffer.duration * 200}px`;
-    newClip.style.left = `${parseFloat(clip.style.left) + originalWidth - parseFloat(newClip.style.width)}px`;
+    clip.style.width = `${soundClip.length * 200}px`;
+    clip.querySelector('canvas').remove();
+    clip.appendChild(soundClip.canvas);
 
-    const soundClipCanvas = newClip.querySelector('canvas');
-    soundClipCanvas.width = parseFloat(newClip.style.width);
-    drawWaveform(rightBuffer, soundClipCanvas);
+    clip.parentNode.appendChild(newClipDiv);
 
-    clip.style.width = `${leftBuffer.duration * 200}px`;
-    drawWaveform(leftBuffer, clip.querySelector('canvas'));
+    newClipDiv.addEventListener('dragstart', handleSoundClipDragStart);
+    newClipDiv.addEventListener('dragend', handleSoundClipDragEnd);
+    newClipDiv.addEventListener('click', handleSoundClipClick);
 
-    clip.parentNode.appendChild(newClip);
-
-    newClip.addEventListener('dragstart', handleSoundClipDragStart);
-    newClip.addEventListener('dragend', handleSoundClipDragEnd);
-    newClip.addEventListener('click', handleSoundClipClick);
-
-    const leftHandle = newClip.querySelector('.left-handle');
-    const rightHandle = newClip.querySelector('.right-handle');
+    const leftHandle = newClipDiv.querySelector('.left-handle');
+    const rightHandle = newClipDiv.querySelector('.right-handle');
 
     leftHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'left'));
     rightHandle.addEventListener('mousedown', (e) => handleTrimMouseDown(e, 'right'));
 
-    addTooltip(newClip, 'Click to select, drag to move, use handles to trim');
+    addTooltip(newClipDiv, 'Click to select, drag to move, use handles to trim');
 
-    duration = Math.max(duration, leftBuffer.duration + rightBuffer.duration);
+    duration = Math.max(duration, soundClip.length + newClip.length);
 }
 
 function handleTrimMouseDown(event, side) {
@@ -413,15 +345,12 @@ function handleTrimMouseMove(event) {
             clip.style.left = `${newLeft}px`;
         }
 
-        const bufferIndex = clip.dataset.buffer;
-        const buffer = audioBuffers[bufferIndex];
-        const newDuration = (parseFloat(clip.style.width) / rect.width) * buffer.duration;
+        const clipIndex = clip.dataset.index;
+        const soundClip = soundClips[clipIndex];
+        const newDuration = (parseFloat(clip.style.width) / rect.width) * soundClip.buffer.duration;
 
-        const newBuffer = audioContext.createBuffer(1, newDuration * audioContext.sampleRate, audioContext.sampleRate);
-        newBuffer.copyToChannel(buffer.getChannelData(0).slice(0, newDuration * audioContext.sampleRate), 0);
-
-        audioBuffers[bufferIndex] = newBuffer;
-        drawWaveform(newBuffer, clip.querySelector('canvas'));
+        soundClip.trim(0, newDuration);
+        drawWaveform(soundClip.buffer, clip.querySelector('canvas'));
     }
 }
 
