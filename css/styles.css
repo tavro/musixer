@@ -1,41 +1,53 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Roboto', sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
     margin: 0;
     padding: 0;
+    background-color: #ffffff;
+    color: #121212;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 body.light-mode {
-    background-color: #f0f0f0;
-    color: #333;
+    background-color: #ffffff;
+    color: #121212;
 }
 
 body.dark-mode {
-    background-color: #333;
-    color: #f0f0f0;
+    background-color: #121212;
+    color: #ffffff;
 }
 
 h1 {
     margin-top: 20px;
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #007bff;
 }
 
 #drop-zone {
     width: 80%;
     height: 200px;
-    border: 2px dashed #aaa;
+    border: 2px dashed #007bff;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: 20px;
-    background-color: #fff;
+    background-color: #f8f9fa;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 #drop-zone p {
-    color: #aaa;
+    color: #007bff;
     font-size: 1.2em;
+}
+
+#drop-zone.dragover {
+    background-color: #e9ecef;
+    border-color: #007bff;
 }
 
 #sound-clips {
@@ -44,31 +56,38 @@ h1 {
 }
 
 .sound-clip {
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #007bff;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sound-clip:hover {
+    background-color: #e9ecef;
+    border-color: #007bff;
 }
 
 .waveform-container {
     position: relative;
     width: 100%;
+    margin-bottom: 10px;
 }
 
 .waveform {
     width: 100%;
     height: 100px;
-    background-color: #eee;
+    background-color: #dee2e6;
 }
 
 .handle {
     width: 10px;
     height: 100px;
-    background-color: #333;
+    background-color: #007bff;
     position: absolute;
     top: 0;
     cursor: ew-resize;
@@ -85,12 +104,13 @@ h1 {
 .handle:hover::after {
     content: attr(data-tooltip);
     position: absolute;
-    top: -20px;
-    background-color: #333;
-    color: #fff;
-    padding: 2px 5px;
-    border-radius: 3px;
+    top: -25px;
+    background-color: #007bff;
+    color: #ffffff;
+    padding: 5px 10px;
+    border-radius: 5px;
     white-space: nowrap;
+    font-size: 0.8em;
 }
 
 .progress-bar {
@@ -98,10 +118,94 @@ h1 {
     top: 0;
     left: 0;
     height: 100px;
-    background-color: rgba(0, 128, 0, 0.3);
+    background-color: rgba(0, 123, 255, 0.5);
     width: 0;
 }
 
 button {
-    margin-top: 10px;
+    margin: 10px 5px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #ffffff;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:focus {
+    outline: none;
+}
+
+#mode-toggle {
+    margin-top: 20px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #ffffff;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#mode-toggle:hover {
+    background-color: #0056b3;
+}
+
+input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+label {
+    margin: 10px 5px;
+    font-size: 1em;
+    cursor: pointer;
+}
+
+body.light-mode #drop-zone {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+}
+
+body.dark-mode #drop-zone {
+    background-color: #333333;
+    border-color: #007bff;
+}
+
+body.light-mode .sound-clip {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+}
+
+body.dark-mode .sound-clip {
+    background-color: #333333;
+    border-color: #007bff;
+}
+
+body.light-mode .waveform {
+    background-color: #dee2e6;
+}
+
+body.dark-mode .waveform {
+    background-color: #555555;
+}
+
+body.light-mode button {
+    background-color: #007bff;
+    color: #ffffff;
+}
+
+body.dark-mode button {
+    background-color: #555555;
+    color: #ffffff;
+}
+
+body.dark-mode button:hover {
+    background-color: #777777;
 }
