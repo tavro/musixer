@@ -7,25 +7,12 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="app">
-        <div id="controls">
-            <div id="button-container">
-                <button id="recordButton">🔴</button>
-                <button id="playButton">▶️</button>
-                <button id="pauseButton">⏸️</button>
-                <button id="muteButton">🔇</button>
-            </div>
-            <div class="slider-container">
-                <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
-            </div>
-            <div id="layerControls">
-                <button id="addLayerButton">➕ Layer</button>
-                <button id="exportMp3Button">Export MP3</button>
-                <button id="exportProjectButton">Export Project</button>
-            </div>
-        </div>
-        <div id="layersContainer"></div>
+    <h1>Musixer</h1>
+    <button id="mode-toggle">Toggle Light/Dark Mode</button>
+    <div id="drop-zone">
+        <p>Drag and drop a sound file here</p>
     </div>
-    <script type="module" src="js/main.js"></script>
+    <div id="sound-clips"></div>
+    <script src="js/app.js"></script>
 </body>
 </html>
